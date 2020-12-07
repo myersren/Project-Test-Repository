@@ -1,4 +1,5 @@
 function FormatThisFigure_AnalyzerApp
+    % This file tests the GIT source control feature in MATLAB.
     %FormatThisFigure_AnalyzerApp - Re-formats plots exported by the
     %                                     Simbiology Analyzer App.  
     %
