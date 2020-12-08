@@ -592,7 +592,6 @@ function FormatThisFigure_AnalyzerApp
 %     end 
     
 %% USER CUSTOMIZATION OPTIONS
-
 setCustomizePlot = questdlg('Would you like to modify the x/y axis labels, plot title, or legend location?');
 switch setCustomizePlot
     case 'Yes'
@@ -651,7 +650,7 @@ end
     
     switch captionSelect
         case 'Yes'
-            prompt = {'Enter the file name: ', 'Variant: ', 'Dosage'};
+            prompt = {'Enter the file name: ', 'Variant: ', 'Dosage: '};
             annotateInfo = inputdlg(prompt);
             annotateString = sprintf('Rosa and Co LLC. %s \t Variant: %s \t Dosage: %s \t',...
                 annotateInfo{1},annotateInfo{2}, annotateInfo{3});
