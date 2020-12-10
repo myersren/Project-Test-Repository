@@ -439,9 +439,7 @@ function FormatThisFigure_AnalyzerApp
                     groupLegend = legend(clonePlotAxes,groups,...
                         'Position',[0.35 0.85 0.1227 0.0300],'numcolumns',numGroups+1);
                 end
-
-             end
-
+    end
     end 
      
     % Link the properties of the group legend and axis clone so they change
