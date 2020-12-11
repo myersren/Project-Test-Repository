@@ -467,11 +467,10 @@ end
 %% B.  Error Bar Functions
 %% Configure Error Bars
 function SimDataStruct = ConfigureErrorBars(filename, SimDataStruct)
-
 sheetNames = cellstr(sheetnames(filename));
 % Read in excel data
 for k = 1:length(sheetNames)
-    [num, txt, raw] = xlsread(filename, sheetNames{k});
+    [num, txt, ~] = xlsread(filename, sheetNames{k});
     AllNames(:,:,k) = txt;
     AllData(:,:,k) = num;
 end
@@ -484,25 +483,58 @@ errorData = sheetNames(listdlg('PromptString',prompt,'ListString',sheetNames,'Se
 for i = 1:length(errorData)
     txtPrompts{i} = [sprintf('Run index # for %s',errorData{i})];
 end
-runIndicies = cellfun(@str2num, inputdlg(txtPrompts)); % Convert to integers
 
-% Separate out the error bar/stdev data on each sheet
-% Parse through the column names until a value is repeated
-for i = 3:length(AllNames)
-    speciesName = AllNames{2};
-    if contains(AllNames{i},speciesName)
-        endMeans = i-1;
-        startStdevs = i;
-        break
-    end
+% Allow the user to view the run #, VP, and dose information if desired 
+viewInfo = questdlg('Would you like to view the run index/dose/variant information?',...
+                     'Yes','No');
+switch viewInfo
+    case "Yes"
+        vars = {'Run Number', 'VP Variant', 'Dose', 'Additional Info'};
+        for m = 1:length(SimDataStruct)
+            runNums(:,m) = sprintf("Run %s",num2str(m));
+        end
+        tableInfo = table(runNums', {SimDataStruct.Variant}', {SimDataStruct.Dose}',{SimDataStruct.RunInfo}','VariableNames',vars);
+        uifig = uifigure;
+        runsTable = uitable(uifig, 'Data', tableInfo);
+        uifig.Position = [350 180 450 500];
+        runsTable.Position = [25 25 400 450];
+        uifig.Name = "Runs Info";
+        uiwait(msgbox('Once you have finished identifying run index numbers, click "ok" to proceed:','View run info','modal'));
 end
-  
+
+% Prompt the user to input run index information for each excel sheet
+try
+    runIndicies = cellfun(@str2num, inputdlg(txtPrompts, 'Enter numerical value of run index')); % Convert to integers
+catch
+    warndlg('Make sure to input numerical index values for all sheets.')
+    runIndicies = cellfun(@str2num, inputdlg(txtPrompts, 'Enter numerical value of run index'));
+end
+
+% Separate out the error bar/stdev data on each sheet; parse through the
+% column names until the species names repeat for the standard deviation
+% values
+try
+    for i = 3:length(AllNames)
+        speciesName = AllNames{2};
+        if contains(AllNames{i},speciesName)
+            endMeans = i-1;
+            startStdevs = i;
+            break
+        end
+    end
+
 % Assign error data (time, mean,stdev) to SimDataStruct
 for i = 1:length(runIndicies)
-    SimDataStruct(runIndicies(i)).ErrorData.time = AllData(:,1,runIndicies(i));
-    SimDataStruct(runIndicies(i)).ErrorData.mean = AllData(:,(2:endMeans),runIndicies(i));
-    SimDataStruct(runIndicies(i)).ErrorData.stdev = AllData(:,(startStdevs:end),runIndicies(i));
+    SimDataStruct(runIndicies(i)).ErrorData.time = AllData(:,1,i);
+    SimDataStruct(runIndicies(i)).ErrorData.mean = AllData(:,(2:endMeans),i);
+    SimDataStruct(runIndicies(i)).ErrorData.stdev = AllData(:,(startStdevs:end),i);
+    SimDataStruct(runIndicies(i)).ErrorData.species = AllNames(:,(2:endMeans),i);
+end
 
+catch
+    warndlg(['Species names must match for mean and standard deviation values '...
+        'and both mean and standard deviation values must be included. '...
+        'Please refer to the template for more information.'])
 end
 
 end
@@ -512,9 +544,13 @@ function errorBars = PlotErrorBars(Struct, SpeciestoPlot, linehandles)
 for i = 1:length(Struct)
     if ~isempty(Struct(i).ErrorData.time)
             % Species index information
-            AllSpecies = Struct(i).RunData.DataNames;
-            [~,speciesIdx] = ismember(SpeciestoPlot, AllSpecies);
-
+            AllSpecies = Struct(i).ErrorData.species;
+            try
+                [~,speciesIdx] = ismember(SpeciestoPlot, AllSpecies);
+            catch
+                warndlg('Species names are not consistent. Please input manually.')
+                
+            end
             % Plot error bars
             x = Struct(i).ErrorData.time(:,1); 
             y = Struct(i).ErrorData.mean(:,speciesIdx);
