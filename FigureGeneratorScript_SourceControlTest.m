@@ -470,9 +470,9 @@ function SimDataStruct = ConfigureErrorBars(filename, SimDataStruct)
 sheetNames = cellstr(sheetnames(filename));
 % Read in excel data
 for k = 1:length(sheetNames)
-    [num, txt, ~] = xlsread(filename, sheetNames{k});
-    AllNames(:,:,k) = txt;
-    AllData(:,:,k) = num;
+    [num, txt, raw] = xlsread(filename, sheetNames{k});
+    AllNames{:,:,k} = txt;
+    AllData{:,:,k} = num;
 end
 
 % Have user select sheets containing relevant experimental data
@@ -514,21 +514,37 @@ end
 % column names until the species names repeat for the standard deviation
 % values
 try
-    for i = 3:length(AllNames)
-        speciesName = AllNames{2};
-        if contains(AllNames{i},speciesName)
-            endMeans = i-1;
-            startStdevs = i;
-            break
+    for m = 1:length(AllNames)
+        
+        % Set default assuming only experimental data
+        endMeans(m) = length(AllNames{m});
+        startStdevs(m) = 0;
+            
+        for i = 3:length(AllNames{m})
+            speciesName = AllNames{m}{2};
+            if contains(AllNames{m}{i},speciesName)
+                endMeans(m) = i-1
+                startStdevs(m) = i
+                break
+            end
         end
     end
-
+    endMeans
+    startStdevs
 % Assign error data (time, mean,stdev) to SimDataStruct
 for i = 1:length(runIndicies)
-    SimDataStruct(runIndicies(i)).ErrorData.time = AllData(:,1,i);
-    SimDataStruct(runIndicies(i)).ErrorData.mean = AllData(:,(2:endMeans),i);
-    SimDataStruct(runIndicies(i)).ErrorData.stdev = AllData(:,(startStdevs:end),i);
-    SimDataStruct(runIndicies(i)).ErrorData.species = AllNames(:,(2:endMeans),i);
+    expData = AllData(:,:,i);
+    nameData = AllNames(:,:,i);
+    
+    SimDataStruct(runIndicies(i)).ErrorData.time = expData{1}(:,1);
+    SimDataStruct(runIndicies(i)).ErrorData.mean = expData{1}(:,(2:endMeans(i)));
+    SimDataStruct(runIndicies(i)).ErrorData.species = nameData{1}(:,(2:endMeans(i)));
+    
+    if startStdevs(i)
+        SimDataStruct(runIndicies(i)).ErrorData.stdev = expData{1}(:,(startStdevs(i):end));
+    else
+        SimDataStruct(runIndicies(i)).ErrorData.stdev = [];
+    end
 end
 
 catch
@@ -547,19 +563,26 @@ for i = 1:length(Struct)
             AllSpecies = Struct(i).ErrorData.species;
             try
                 [~,speciesIdx] = ismember(SpeciestoPlot, AllSpecies);
+                assert(~isequal(speciesIdx, 0));
             catch
                 warndlg('Species names are not consistent. Please input manually.')
-                
+                speciesIdx = listdlg('PromptString', ['Please find the entry corresponding to '...
+                        SpeciestoPlot ' in the list below:'], 'ListString', AllSpecies,...
+                        'ListSize', [400 400]);
             end
             % Plot error bars
             x = Struct(i).ErrorData.time(:,1); 
             y = Struct(i).ErrorData.mean(:,speciesIdx);
-            err = Struct(i).ErrorData.stdev(:,speciesIdx);
+            if ~isempty(Struct(i).ErrorData.stdev)
+                err = Struct(i).ErrorData.stdev(:,speciesIdx);
+            else
+                err = [];
+            end
             errorBars = errorbar(x,y,err);
             hold on
             
             % Set error bar properties
-            set(errorBars,'LineStyle','none','Marker','d','MarkerSize',5,'Color',linehandles(i).Color,'LineWidth',3);
+            set(errorBars,'LineStyle','none','Marker','o','MarkerSize',5,'Color',linehandles(i).Color,'LineWidth',3);
     else
         errorBars = [];     
     end
