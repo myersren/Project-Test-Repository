@@ -7,7 +7,7 @@
 %       Inputs: SimDataStruct, SimulationDir
 %
 %       Modified by Renee Myers
-%       Revised: 11-20-2020
+%       Revised: 12-14-2020
 
 %       See also SimulationAnalysisScript, SaveThisFigure, FormatThisFigure
 %
